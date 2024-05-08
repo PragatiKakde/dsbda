@@ -1,0 +1,88 @@
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class WordCount {
+
+  public static class TokenizerMapper
+       extends Mapper<Object, Text, Text, IntWritable>{
+
+    private final static IntWritable one = new IntWritable(1);
+    private Text word = new Text();
+
+    public void map(Object key, Text value, Context context
+                    ) throws IOException, InterruptedException {
+      StringTokenizer itr = new StringTokenizer(value.toString());
+      while (itr.hasMoreTokens()) {
+        word.set(itr.nextToken());
+        context.write(word, one);
+      }
+    }
+  }
+
+  public static class IntSumReducer
+       extends Reducer<Text,IntWritable,Text,IntWritable> {
+    private IntWritable result = new IntWritable();
+
+    public void reduce(Text key, Iterable<IntWritable> values,
+                       Context context
+                       ) throws IOException, InterruptedException {
+      int sum = 0;
+      for (IntWritable val : values) {
+        sum += val.get();
+      }
+      result.set(sum);
+      context.write(key, result);
+    }
+  }
+
+  public static void main(String[] args) throws Exception {
+    Configuration conf = new Configuration();
+    Job job = Job.getInstance(conf, "word count");
+    job.setJarByClass(WordCount.class);
+    job.setMapperClass(TokenizerMapper.class);
+    job.setCombinerClass(IntSumReducer.class);
+    job.setReducerClass(IntSumReducer.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(IntWritable.class);
+    FileInputFormat.addInputPath(job, new Path(args[0]));
+    FileOutputFormat.setOutputPath(job, new Path(args[1]));
+    System.exit(job.waitForCompletion(true) ? 0 : 1);
+  }
+}
+
+
+
+Commands:
+Creating new project in eclipse -> libraries -> add external JARs -> File system -> usr -> lib -> Hadoop -> select all jar files -> add -> client -> select all jar files -> ok
+After writing program. 
+Export JAE FILE: 
+Right click on program folder-> export -> java->JAR file->browse->cloudera->wordcount.jar
+
+Open terminal:
+1. ls
+2. pwd
+3. cat  >  /home/cloudera/Processfile.txt
+	(Write in file)
+4. cat   /home/cloudera/Processfile.txt
+5. Move file to hdfs
+	Hdfs dfs -ls
+	Hdfs dfs -ls /
+6. hdfs dfs -mkdir /input   
+(sudo -u hdfs Hadoop fs -mkdir /inputfolder)
+(sudo -u hdfs Hadoop -chown cloudera/inputfolder/)
+7. hdfs dfs -put /home/cloudera/Processfile.txt/inputfolder/
+8. hdfs dfs -cat /inputfolder/Processfile1.txt
+9. Hadoop jar /home/cloudera/Wordcount.jar WordCount /inputfolder/Processfile.txt /out1
+(sudo service Hadoop-yarn-resourcemanager restart)
+10. hdfs dfs -ls /out1
+11. hdfs dfs -cat /out1/part-r-00000
